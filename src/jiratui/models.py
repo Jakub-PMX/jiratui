@@ -333,12 +333,32 @@ class JiraIssue(JiraBaseIssue):
         return f'{self.key.strip()} - {self.summary.strip()}'
 
     def cleaned_summary(self, max_length: int | None = None) -> str:
-        if max_length is not None:
-            if (stripped_summary := self.summary.strip()) and len(
-                stripped_summary
-            ) > max_length - 3:
-                return f'{stripped_summary[: max_length - 3]}...'
-        return self.summary.strip()
+        # First, strip leading/trailing whitespace
+        summary = self.summary.strip()
+
+        # Determine the project key if possible
+        project_key = (
+            self.project.key
+            if self.project
+            else (self.key.split('-')[0] if self.key and '-' in self.key else None)
+        )
+
+        # Define the exact prefixes to look for, ending with a pipe
+        prefix_full_key = f'{self.key} |'
+        prefix_project_key = f'{project_key} |' if project_key else None
+
+        # Check for full key prefix (e.g., "ETL-123 | Summary")
+        if summary.startswith(prefix_full_key):
+            summary = summary[len(prefix_full_key) :].lstrip()
+        # Else, check for project key prefix (e.g., "ETL | Summary")
+        elif prefix_project_key and summary.startswith(prefix_project_key):
+            summary = summary[len(prefix_project_key) :].lstrip()
+
+        # Apply truncation if max_length is provided
+        if max_length is not None and len(summary) > max_length - 3:
+            return f'{summary[:max_length - 3]}...'
+
+        return summary
 
     def display_status(self) -> str:
         if self.status:
