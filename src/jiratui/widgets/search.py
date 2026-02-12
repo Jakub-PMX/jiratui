@@ -200,7 +200,7 @@ class IssuesSearchResultsTable(DataTable):
                     Text(issue.key, style=style_work_type),
                     Text(issue.status.name, style=style_status),
                     issue.assignee_initials,
-                    Text(issue_summary),
+                    Text(issue_summary, style='bright_white'),
                 ],
                 key=f'{issue.id}#{issue.key}',
             )
