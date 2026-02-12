@@ -177,7 +177,7 @@ class IssuesSearchResultsTable(DataTable):
             self.token_by_page[self.page + 1] = response.next_page_token
 
         # set the columns
-        self.add_columns(*['#', 'Parent', 'Key', 'Status', 'Summary'])
+        self.add_columns(*['#', 'Parent', 'Key', 'Status', 'Dev', 'Summary'])
         # build the rows
         for index, issue in enumerate(response.issues):
             issue_summary = issue.cleaned_summary(

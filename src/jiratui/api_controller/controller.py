@@ -799,7 +799,7 @@ class APIController:
                 jql_query=criteria.get('jql'),
                 fields=fields
                 if fields
-                else ['id', 'key', 'status', 'summary', 'issuetype', 'parent'],
+                else ['id', 'key', 'status', 'summary', 'issuetype', 'parent', 'assignee'],
                 next_page_token=next_page_token,
                 limit=limit,
                 order_by=order_by,
@@ -905,7 +905,7 @@ class APIController:
                 jql_query=criteria.get('jql'),
                 fields=fields
                 if fields
-                else ['id', 'key', 'status', 'summary', 'issuetype', 'parent'],
+                else ['id', 'key', 'status', 'summary', 'issuetype', 'parent', 'assignee'],
                 offset=offset,
                 limit=limit,
                 order_by=order_by,

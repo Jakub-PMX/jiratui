@@ -145,6 +145,18 @@ class JiraUser(BaseModel):
     def get_account_id(self) -> str:
         return self.account_id or ''
 
+    @property
+    def initials(self) -> str:
+        """Returns the user's initials from their display name."""
+        if not self.display_name:
+            return 'na'
+        parts = self.display_name.split()
+        if len(parts) > 1:
+            return (parts[0][0] + parts[-1][0]).upper()
+        elif parts:
+            return parts[0][0].upper()
+        return 'nf'
+
 
 @dataclass
 class IssuePriority(BaseModel):
@@ -344,6 +356,12 @@ class JiraIssue(JiraBaseIssue):
         if self.assignee:
             return self.assignee.display_name
         return ''
+
+    @property
+    def assignee_initials(self) -> str:
+        if self.assignee:
+            return self.assignee.initials
+        return 'nn'
 
     @property
     def work_item_type_name(self) -> str:

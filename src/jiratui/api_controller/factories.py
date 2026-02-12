@@ -141,7 +141,7 @@ class WorkItemFactory:
             assignee=JiraUser(
                 account_id=assignee.get('accountId'),
                 active=assignee.get('active'),
-                display_name=assignee.get('displayName'),
+                display_name=assignee.get('displayName', ''),
                 email=assignee.get('emailAddress'),
             )
             if assignee
@@ -149,7 +149,7 @@ class WorkItemFactory:
             reporter=JiraUser(
                 account_id=reporter.get('accountId'),
                 active=reporter.get('active'),
-                display_name=reporter.get('displayName'),
+                display_name=reporter.get('displayName', ''),
                 email=reporter.get('emailAddress'),
             )
             if reporter
