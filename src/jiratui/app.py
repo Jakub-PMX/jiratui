@@ -102,6 +102,16 @@ class JiraApp(App):
 
         self.focus_item_on_startup: int | None = focus_item_on_startup
 
+        self.dynamic_title: str | None = None
+        if self.initial_jql_expression_id is not None:
+            try:
+                if self.config.pre_defined_jql_expressions:
+                    self.dynamic_title = self.config.pre_defined_jql_expressions[
+                        self.initial_jql_expression_id
+                    ].get('label')
+            except IndexError:
+                pass
+
         self.server_info: JiraServerInfo | None = None
         self._setup_logging()
         self._setup_theme(user_theme)
@@ -179,8 +189,10 @@ class JiraApp(App):
     def _set_application_title(self) -> None:
         config = CONFIGURATION.get()
 
+        if self.dynamic_title:
+            self.title = self.dynamic_title
         # Check if tui_custom_title is defined
-        if config.tui_custom_title is not None:
+        elif config.tui_custom_title is not None:
             # If tui_custom_title is an empty string, don't render title at all
             if config.tui_custom_title == '':
                 self.title = ''
