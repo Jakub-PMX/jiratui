@@ -1,5 +1,7 @@
-jira_api_username: 'foo@bar'
-jira_api_token: '12345'
+# JIRA credentials should be set via environment variables:
+# export JIRATUI_JIRA_API_USERNAME="your-email@example.com"
+# export JIRATUI_JIRA_API_TOKEN="your-api-token"
+
 jira_api_base_url: 'https://<your-hostname>.atlassian.net'
 jira_base_url: 'https://<your-hostname>.atlassian.net'
 jira_user_group_id: '12345'

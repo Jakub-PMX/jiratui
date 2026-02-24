@@ -213,6 +213,7 @@ class ApplicationConfiguration(BaseSettings):
     """Configuration for styling components like work item status, priorities and type colors."""
 
     model_config = SettingsConfigDict(
+        env_prefix='JIRATUI_',
         extra='allow',
     )
 
