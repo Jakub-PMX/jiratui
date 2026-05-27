@@ -106,19 +106,19 @@ class IssuesSearchResultsTable(DataTable):
         ),
         Binding('escape', 'hide', 'Hide search input', show=False),
         Binding(
-            key='alt+left',
+            key='ctrl+shift+left',
             action='previous_issues_page',
             description='Previous',
             show=True,
-            key_display='alt+left',
+            key_display='^shift+left',
             tooltip='Previous page',
         ),
         Binding(
-            key='alt+right',
+            key='ctrl+shift+right',
             action='next_issues_page',
             description='Next',
             show=True,
-            key_display='alt+right',
+            key_display='^shift+right',
             tooltip='Next page',
         ),
         Binding(
