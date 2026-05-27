@@ -22,7 +22,7 @@ class PreDefinedJQLExpressionsWidget(Select):
         self.border_title = 'Expression'
 
 
-class JQLEditorScreen(ModalScreen[str]):
+class JQLEditorScreen(ModalScreen[str | dict]):
     """A screen that displays an editor for JQL expressions."""
 
     BINDINGS = [('escape', 'app.pop_screen', 'Close Help')]
@@ -32,6 +32,7 @@ class JQLEditorScreen(ModalScreen[str]):
         super().__init__()
         self.content = content or ''
         self.predefined_jql_expressions: dict | None = None
+        self.active_sprint_override: bool | None = None
         if CONFIGURATION.get().pre_defined_jql_expressions:
             self.predefined_jql_expressions = CONFIGURATION.get().pre_defined_jql_expressions
 
@@ -56,7 +57,11 @@ class JQLEditorScreen(ModalScreen[str]):
 
     def on_key(self, event: Key):
         if event.key == 'escape':
-            self.dismiss(self.query_one(TextArea).text.strip())
+            text = self.query_one(TextArea).text.strip()
+            if self.active_sprint_override is not None:
+                self.dismiss({'expression': text, 'active_sprint': self.active_sprint_override})
+            else:
+                self.dismiss(text)
 
     @on(PreDefinedJQLExpressionsWidget.Changed)
     def select_pre_defined_expression(self, event: Select.Changed) -> None:
@@ -65,3 +70,4 @@ class JQLEditorScreen(ModalScreen[str]):
                 expression := data.get('expression')
             ):
                 self.query_one(TextArea).text = expression
+                self.active_sprint_override = data.get('active_sprint')

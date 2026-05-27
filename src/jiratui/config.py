@@ -125,7 +125,9 @@ class ApplicationConfiguration(BaseSettings):
     this is False the list of comments is updated in place."""
     pre_defined_jql_expressions: dict | None = None
     """A dictionary with pre-define JWL expressions to use in the JQL Expression Editor. Expects a mapping from
-    user-defined IDs into a dictionary with a label and the expression. Example:
+    user-defined IDs into a dictionary with a label and the expression. Optionally, each entry can also include an
+    ``active_sprint`` boolean that overrides the global ``active_sprint_on_startup`` setting when the expression is
+    loaded. Example:
 
     1: {
         'label': 'Find work created by John and sort it by created date asc',
@@ -133,7 +135,8 @@ class ApplicationConfiguration(BaseSettings):
     },
     2: {
         'label': 'Find work due on 2100-12-31 and for the production environment',
-        'expression': 'dueDate = '2100-12-31' AND environment = 'production''
+        'expression': 'dueDate = '2100-12-31' AND environment = 'production'',
+        'active_sprint': False
     }
     """
     jql_expression_id_for_work_items_search: int | None = None

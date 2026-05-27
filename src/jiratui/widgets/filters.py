@@ -1,4 +1,5 @@
 from textual import on
+from textual.message import Message
 from textual.reactive import Reactive, reactive
 from textual.widgets import Checkbox, Input, Select
 
@@ -237,6 +238,12 @@ class JQLSearchWidget(Input):
     def help_anchor(self) -> str:
         return '#searching-using-jql-expressions'
 
+    class EditorClosed(Message):
+        def __init__(self, expression: str, active_sprint: bool | None):
+            self.expression = expression
+            self.active_sprint = active_sprint
+            super().__init__()
+
     def watch_expression(self, value: str | None = None) -> None:
         if value and value not in self.value:  # type:ignore[has-type]
             if self.value:  # type:ignore[has-type]
@@ -247,8 +254,15 @@ class JQLSearchWidget(Input):
     async def action_open_jql_editor(self) -> None:
         await self.app.push_screen(JQLEditorScreen(self.value), callback=self.update_input_value)
 
-    def update_input_value(self, value: str) -> None:
-        self.value = self._clean_value(value)
+    def update_input_value(self, value: str | dict) -> None:
+        if isinstance(value, dict):
+            expression = value.get('expression', '')
+            active_sprint = value.get('active_sprint')
+        else:
+            expression = value
+            active_sprint = None
+        self.value = self._clean_value(expression)
+        self.post_message(self.EditorClosed(expression, active_sprint))
 
     @staticmethod
     def _clean_value(value: str) -> str | None:

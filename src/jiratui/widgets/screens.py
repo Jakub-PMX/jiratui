@@ -439,12 +439,13 @@ class MainScreen(Screen):
         if self.initial_jql_expression_id and (
             pre_defined_jql_expressions := CONFIGURATION.get().pre_defined_jql_expressions
         ):
-            if (
-                expression_data := pre_defined_jql_expressions.get(self.initial_jql_expression_id)
-            ) and (expression := expression_data.get('expression')):
-                self.jql_expression_input.expression = expression.replace('\n', ' ').replace(
-                    '\t', ' '
-                )
+            if expression_data := pre_defined_jql_expressions.get(self.initial_jql_expression_id):
+                if expression := expression_data.get('expression'):
+                    self.jql_expression_input.expression = expression.replace('\n', ' ').replace(
+                        '\t', ' '
+                    )
+                if (active_sprint := expression_data.get('active_sprint')) is not None:
+                    self.active_sprint_checkbox.value = active_sprint
 
         # Trigger search on startup if enabled
         if CONFIGURATION.get().search_on_startup:
@@ -605,6 +606,11 @@ class MainScreen(Screen):
                 'users': users,
                 'selection': self.initial_assignee_account_id,
             }
+
+    @on(JQLSearchWidget.EditorClosed)
+    def on_jql_search_widget_editor_closed(self, event: JQLSearchWidget.EditorClosed) -> None:
+        if event.active_sprint is not None:
+            self.active_sprint_checkbox.value = event.active_sprint
 
     @on(Select.Changed, '#jira-project-selector')
     async def handle_project_selection(self, event: Select.Changed) -> None:
