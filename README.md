@@ -108,6 +108,13 @@ config file as described below.
 
 You must provide the following values to connect to your Jira instance API:
 
+#### Using env vars
+- `JIRATUI_JIRA_API_USERNAME`
+- `JIRATUI_JIRA_API_TOKEN`
+- `JIRATUI_JIRA_API_BASE_URL`
+
+#### Using config (not recommended as it exposes secrets alongside other config)
+
 - `jira_api_username`: the username for connecting to your Jira API.
 - `jira_api_token`: the token for connecting to your Jira API. This can be your Personal Access Token (PAT).
 - `jira_api_base_url`: the base URL of your Jira instance API.
