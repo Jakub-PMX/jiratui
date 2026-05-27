@@ -796,6 +796,27 @@ class PaginatedJiraWorklog(BaseModel):
 
 
 @dataclass
+class DailyWorklogEntry(BaseModel):
+    """Represents a single worklog entry for a specific date and issue."""
+
+    date: date
+    issue_key: str
+    issue_summary: str
+    time_spent: str
+    time_spent_seconds: int
+    comment: str
+
+
+@dataclass
+class DailyWorklogSummary(BaseModel):
+    """Represents a summary of worklogs for a specific date."""
+
+    date: date
+    total_seconds: int
+    entries: list[DailyWorklogEntry]
+
+
+@dataclass
 class JiraField(BaseModel):
     """Represents a Jira field as returned by the endpoint that retrieves fields.
 

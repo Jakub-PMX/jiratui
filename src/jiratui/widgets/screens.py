@@ -216,6 +216,14 @@ class MainScreen(Screen):
             key_display='^g',
             tooltip='Creates a Git branch with the key of the work item',
         ),
+        Binding(
+            key='ctrl+w',
+            action='worklog_summary',
+            description='Worklogs',
+            show=True,
+            key_display='^w',
+            tooltip='View a summary of your worklogs for a date range',
+        ),
     ]
 
     def __init__(
@@ -937,6 +945,12 @@ class MainScreen(Screen):
 
     async def _open_git_screen(self, work_item_key: str) -> None:
         await self.app.push_screen(GitScreen(work_item_key))
+
+    async def action_worklog_summary(self) -> None:
+        """Opens a screen to view a summary of worklogs for a date range."""
+        from jiratui.widgets.work_log_summary import WorkLogSummaryScreen
+
+        await self.app.push_screen(WorkLogSummaryScreen())
 
     async def action_create_work_item(self) -> None:
         """Handles the event to create a new work item."""

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
@@ -14,6 +14,7 @@ from jiratui.exceptions import (
 )
 from jiratui.models import (
     Attachment,
+    DailyWorklogSummary,
     IssueComment,
     IssueRemoteLink,
     IssueStatus,
@@ -3313,3 +3314,228 @@ async def test_update_issue_flagged_status_updating_succeeds_without_note(
         '1', {'customfield_10021': [{'set': [{'value': 'Impediment'}]}]}
     )
     add_comment_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch.object(APIController, 'get_work_item_worklog')
+@patch.object(APIController, 'search_issues')
+@patch.object(APIController, 'myself')
+async def test_get_worklogs_by_date_range(
+    myself_mock: Mock,
+    search_issues_mock: AsyncMock,
+    get_work_item_worklog_mock: AsyncMock,
+    jira_api_controller: APIController,
+):
+    # GIVEN
+    myself_mock.return_value = APIControllerResponse(
+        result=JiraMyselfInfo(
+            account_type='atlassian',
+            account_id='user-1',
+            active=True,
+            display_name='Test User',
+            email='test@example.com',
+        )
+    )
+    search_issues_mock.return_value = APIControllerResponse(
+        result=JiraIssueSearchResponse(
+            issues=[
+                JiraIssue(
+                    id='1',
+                    key='PROJ-1',
+                    summary='Issue One',
+                    status=IssueStatus(name='Done', id='1'),
+                    issue_type=IssueType(id='1', name='Task'),
+                ),
+                JiraIssue(
+                    id='2',
+                    key='PROJ-2',
+                    summary='Issue Two',
+                    status=IssueStatus(name='In Progress', id='2'),
+                    issue_type=IssueType(id='2', name='Bug'),
+                ),
+            ],
+            is_last=True,
+        )
+    )
+    get_work_item_worklog_mock.side_effect = [
+        APIControllerResponse(
+            result=PaginatedJiraWorklog(
+                logs=[
+                    JiraWorklog(
+                        id='wl-1',
+                        issue_id='1',
+                        started=datetime(2025, 10, 15, 9, 0, 0, tzinfo=timezone.utc),
+                        time_spent='2h',
+                        time_spent_seconds=7200,
+                        author=JiraUser(
+                            account_id='user-1',
+                            active=True,
+                            display_name='Test User',
+                            email='test@example.com',
+                        ),
+                        comment='Worked on feature',
+                    ),
+                    JiraWorklog(
+                        id='wl-2',
+                        issue_id='1',
+                        started=datetime(2025, 10, 16, 9, 0, 0, tzinfo=timezone.utc),
+                        time_spent='1h',
+                        time_spent_seconds=3600,
+                        author=JiraUser(
+                            account_id='user-1',
+                            active=True,
+                            display_name='Test User',
+                            email='test@example.com',
+                        ),
+                        comment='',
+                    ),
+                ],
+                max_results=50,
+                start_at=0,
+                total=2,
+            )
+        ),
+        APIControllerResponse(
+            result=PaginatedJiraWorklog(
+                logs=[
+                    JiraWorklog(
+                        id='wl-3',
+                        issue_id='2',
+                        started=datetime(2025, 10, 15, 14, 0, 0, tzinfo=timezone.utc),
+                        time_spent='3h 30m',
+                        time_spent_seconds=12600,
+                        author=JiraUser(
+                            account_id='user-1',
+                            active=True,
+                            display_name='Test User',
+                            email='test@example.com',
+                        ),
+                        comment='Fixed bug',
+                    ),
+                ],
+                max_results=50,
+                start_at=0,
+                total=1,
+            )
+        ),
+    ]
+
+    # WHEN
+    response = await jira_api_controller.get_worklogs_by_date_range(
+        from_date=date(2025, 10, 15),
+        to_date=date(2025, 10, 16),
+    )
+
+    # THEN
+    assert isinstance(response, APIControllerResponse)
+    assert response.success is True
+    assert response.error is None
+    summaries: list[DailyWorklogSummary] = response.result
+    assert len(summaries) == 2
+
+    # 2025-10-16 should come first (reverse chronological)
+    assert summaries[0].date == date(2025, 10, 16)
+    assert summaries[0].total_seconds == 3600
+    assert len(summaries[0].entries) == 1
+    assert summaries[0].entries[0].issue_key == 'PROJ-1'
+
+    assert summaries[1].date == date(2025, 10, 15)
+    assert summaries[1].total_seconds == 19800  # 7200 + 12600
+    assert len(summaries[1].entries) == 2
+
+    myself_mock.assert_called_once()
+    search_issues_mock.assert_called_once()
+    assert get_work_item_worklog_mock.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch.object(APIController, 'myself')
+async def test_get_worklogs_by_date_range_myself_fails(
+    myself_mock: Mock,
+    jira_api_controller: APIController,
+):
+    # GIVEN
+    myself_mock.return_value = APIControllerResponse(success=False, error='auth error')
+
+    # WHEN
+    response = await jira_api_controller.get_worklogs_by_date_range(
+        from_date=date(2025, 10, 15),
+        to_date=date(2025, 10, 16),
+    )
+
+    # THEN
+    assert isinstance(response, APIControllerResponse)
+    assert response.success is False
+    assert response.error == 'Unable to identify the current user.'
+
+
+@pytest.mark.asyncio
+@patch.object(APIController, 'get_work_item_worklog')
+@patch.object(APIController, 'search_issues')
+@patch.object(APIController, 'myself')
+async def test_get_worklogs_by_date_range_filters_other_users(
+    myself_mock: Mock,
+    search_issues_mock: AsyncMock,
+    get_work_item_worklog_mock: AsyncMock,
+    jira_api_controller: APIController,
+):
+    # GIVEN
+    myself_mock.return_value = APIControllerResponse(
+        result=JiraMyselfInfo(
+            account_type='atlassian',
+            account_id='user-1',
+            active=True,
+            display_name='Test User',
+            email='test@example.com',
+        )
+    )
+    search_issues_mock.return_value = APIControllerResponse(
+        result=JiraIssueSearchResponse(
+            issues=[
+                JiraIssue(
+                    id='1',
+                    key='PROJ-1',
+                    summary='Issue One',
+                    status=IssueStatus(name='Done', id='1'),
+                    issue_type=IssueType(id='1', name='Task'),
+                ),
+            ],
+            is_last=True,
+        )
+    )
+    get_work_item_worklog_mock.return_value = APIControllerResponse(
+        result=PaginatedJiraWorklog(
+            logs=[
+                JiraWorklog(
+                    id='wl-1',
+                    issue_id='1',
+                    started=datetime(2025, 10, 15, 9, 0, 0, tzinfo=timezone.utc),
+                    time_spent='2h',
+                    time_spent_seconds=7200,
+                    author=JiraUser(
+                        account_id='other-user',
+                        active=True,
+                        display_name='Other User',
+                        email='other@example.com',
+                    ),
+                    comment='',
+                ),
+            ],
+            max_results=50,
+            start_at=0,
+            total=1,
+        )
+    )
+
+    # WHEN
+    response = await jira_api_controller.get_worklogs_by_date_range(
+        from_date=date(2025, 10, 15),
+        to_date=date(2025, 10, 16),
+    )
+
+    # THEN
+    assert isinstance(response, APIControllerResponse)
+    assert response.success is True
+    summaries: list[DailyWorklogSummary] = response.result
+    assert len(summaries) == 0
+

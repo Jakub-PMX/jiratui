@@ -1205,11 +1205,49 @@ SelectionsScreen > SelectionList {
     padding: 0 1;
     & > TextArea {
         margin-top: 1;
-        scrollbar-size-vertical: 1;
     }
     & > ItemGrid {
         margin-top: 1;
     }
     border: round $primary-lighten-3;
     background: transparent;
+}
+
+/* Worklog Summary Screen */
+
+WorkLogSummaryScreen {
+    align: center middle;
+    background: $background 80%;
+}
+
+WorkLogSummaryScreen > Vertical {
+    width: 80%;
+    height: 85%;
+    border: round $foreground;
+    padding: 1 1;
+    & .worklog-summary-search-grid {
+        grid-size: 3 1;
+        grid-columns: 30% 30% 40%;
+        align: center middle;
+    }
+    & .worklog-section-title {
+        text-style: bold;
+        color: $accent;
+        padding: 1 0 0 0;
+    }
+    & #worklog-results-container {
+        scrollbar-size-vertical: 1;
+    }
+}
+
+#worklog-summary-table {
+    background: transparent;
+    height: auto;
+    max-height: 30%;
+}
+
+#worklog-itemised-table {
+    background: transparent;
+    height: auto;
+    max-height: 70%;
 }

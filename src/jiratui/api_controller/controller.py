@@ -37,6 +37,8 @@ from jiratui.exceptions import (
 from jiratui.models import (
     Attachment,
     BaseModel,
+    DailyWorklogEntry,
+    DailyWorklogSummary,
     IssueComment,
     IssueRemoteLink,
     IssueStatus,
@@ -2247,6 +2249,145 @@ class APIController:
             )
             return APIControllerResponse(success=False, error=exception_details.get('message'))
         return APIControllerResponse()
+
+    async def get_worklogs_by_date_range(
+        self,
+        from_date: date,
+        to_date: date,
+    ) -> APIControllerResponse:
+        """Retrieves worklogs for the current user within a date range.
+
+        Searches for issues that have worklogs by the current user in the given date range,
+        then fetches the worklogs for each issue and filters them by date and author.
+
+        Args:
+            from_date: the start date (inclusive) to search for worklogs.
+            to_date: the end date (inclusive) to search for worklogs.
+
+        Returns:
+            An instance of `APIControllerResponse` with a list of `DailyWorklogSummary` instances.
+        """
+
+        myself_response = await self.myself()
+        if not myself_response.success or not myself_response.result:
+            return APIControllerResponse(success=False, error='Unable to identify the current user.')
+
+        current_user: JiraMyselfInfo = myself_response.result
+
+        jql = (
+            f'worklogAuthor = currentUser() and worklogDate >= "{from_date.isoformat()}" '
+            f'and worklogDate <= "{to_date.isoformat()}"'
+        )
+
+        all_issues: list[JiraIssue] = []
+        next_page_token: str | None = None
+        page = 1
+        max_pages = 20
+
+        while page <= max_pages:
+            response: APIControllerResponse
+            if self.config.cloud:
+                response = await self.search_issues(
+                    jql_query=jql,
+                    next_page_token=next_page_token,
+                    limit=100,
+                )
+            else:
+                response = await self.search_issues_by_page_number(
+                    jql_query=jql,
+                    page=page,
+                    limit=100,
+                )
+
+            if not response.success or not response.result:
+                break
+
+            result: JiraIssueSearchResponse = response.result
+            all_issues.extend(result.issues)
+
+            if result.is_last:
+                break
+
+            if self.config.cloud:
+                if result.next_page_token:
+                    next_page_token = result.next_page_token
+                else:
+                    break
+            else:
+                if len(result.issues) < 100:
+                    break
+                page += 1
+
+        all_worklogs: list[dict] = []
+        for issue in all_issues:
+            worklog_response: APIControllerResponse = await self.get_work_item_worklog(
+                issue.key, limit=5000
+            )
+            if not worklog_response.success or not worklog_response.result:
+                continue
+
+            paginated_worklogs: PaginatedJiraWorklog = worklog_response.result
+            for worklog in paginated_worklogs.logs:
+                if not worklog.started:
+                    continue
+
+                worklog_date = worklog.started.date()
+                if worklog_date < from_date or worklog_date > to_date:
+                    continue
+
+                if not worklog.author:
+                    continue
+
+                author_match = False
+                if self.config.cloud:
+                    author_match = worklog.author.account_id == current_user.account_id
+                else:
+                    author_match = (
+                        worklog.author.username == current_user.username
+                        or worklog.author.email == current_user.email
+                    )
+
+                if not author_match:
+                    continue
+
+                all_worklogs.append(
+                    {
+                        'date': worklog_date,
+                        'issue_key': issue.key,
+                        'issue_summary': issue.summary,
+                        'time_spent': worklog.time_spent or '',
+                        'time_spent_seconds': worklog.time_spent_seconds or 0,
+                        'comment': worklog.get_comment() or '',
+                    }
+                )
+
+        grouped: dict[date, list[dict]] = defaultdict(list)
+        for entry in all_worklogs:
+            grouped[entry['date']].append(entry)
+
+        summaries: list[DailyWorklogSummary] = []
+        for date_key in sorted(grouped.keys(), reverse=True):
+            entries = grouped[date_key]
+            total_seconds = sum(e['time_spent_seconds'] for e in entries)
+            summaries.append(
+                DailyWorklogSummary(
+                    date=date_key,
+                    total_seconds=total_seconds,
+                    entries=[
+                        DailyWorklogEntry(
+                            date=e['date'],
+                            issue_key=e['issue_key'],
+                            issue_summary=e['issue_summary'],
+                            time_spent=e['time_spent'],
+                            time_spent_seconds=e['time_spent_seconds'],
+                            comment=e['comment'],
+                        )
+                        for e in entries
+                    ],
+                )
+            )
+
+        return APIControllerResponse(result=summaries)
 
     async def get_fields(self, field_name: str | None = None) -> APIControllerResponse:
         """Retrieves system and custom issue fields.
